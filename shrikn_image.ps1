@@ -1,70 +1,58 @@
-Add-Type -AssemblyName System.Drawing
+# ã‚¢ã‚»ãƒ³ãƒ–ãƒªã®èª­ã¿è¾¼ã¿
+[void][Reflection.Assembly]::LoadWithPartialName("System.Drawing")
 
-# ‰æ‘œƒtƒ@ƒCƒ‹‚ÌŠg’£qˆê——‚ğ”z—ñ‚ÉŠi”[‚µ‚Äæ“¾
+# ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«ã®ç¸®å°å‡¦ç†ã‚’å®Ÿè¡Œã™ã‚‹ãƒ•ã‚©ãƒ«ãƒ€ãƒ‘ã‚¹
+$folderPath = "C:\hoge"
+
+#-----------------------------------------------------------
+# ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«ã®ã‚µã‚¤ã‚ºã‚’å¤‰æ›´
+#-----------------------------------------------------------
+
+# ç”»åƒãƒ•ã‚¡ã‚¤ãƒ«ã®æ‹¡å¼µå­ä¸€è¦§ã‚’é…åˆ—ã«æ ¼ç´ã—ã¦å–å¾—
 $imageExtensions = @("*.jpg", "*.jpeg", "*.png", "*.bmp")
-$rootFolderPath = "C:\hogehoge\"
 
-# w’è‚µ‚½ƒtƒHƒ‹ƒ_“à‚Ì‚·‚×‚Ä‚ÌƒTƒuƒtƒHƒ‹ƒ_‚ğƒ‹[ƒv
-Get-ChildItem -Directory -Path $rootFolderPath -Recurse | ForEach-Object {
-    $folderPath = $_.FullName
-
-    # ŠeƒTƒuƒtƒHƒ‹ƒ_“à‚Ì‰æ‘œƒtƒ@ƒCƒ‹‚ğƒ‹[ƒv
-    Get-ChildItem -File -Path $folderPath | ForEach-Object {
-        # ˆ—’†‚Ìƒtƒ@ƒCƒ‹–¼‚ğ•\¦
-        Write-Host $_
-
-        if($imageExtensions -notcontains [System.IO.Path]::GetExtension($_.FullName)){
-            Write-Host "ƒtƒ@ƒCƒ‹" $_ "‚Í‰æ‘œƒtƒ@ƒCƒ‹‚Å‚È‚¢‚½‚ß‘ÎÛŠO‚Å‚·B"
-            return
-        }
+foreach ($extension in $imageExtensions) {
+    Get-ChildItem -File -Path $folderPath -Filter $extension -Recurse | ForEach-Object {
+        Write-Host $_.FullName
 
         $image = [System.Drawing.Image]::FromFile($_.FullName)
-
         try {
-            # ‰æ‘œ‚ªƒ^ƒe’·(Portrait)‚Å‚ ‚é‚©‚ğ”»•Ê‚·‚é•Ï” isPortrait
+            # ç”»åƒãŒã‚¿ãƒ†é•·(Portrait)ã§ã‚ã‚‹ã‹ã‚’åˆ¤åˆ¥ã™ã‚‹å¤‰æ•° isPortrait
             $isPortrait = $image.Height -gt $image.Width
 
-            # V‚µ‚¢ƒTƒCƒY‚ğŒvZ
+            # ç”»åƒãŒã‚¿ãƒ†é•·ã€ã‹ã¤æ¨ªå¹…ãŒ800pxã‚ˆã‚Šå¤§ãã„å ´åˆ
             if ($isPortrait -and $image.Width -gt 800) {
                 $ratio = $image.Height / $image.Width
                 $newWidth = 800
                 $newHeight = [math]::Round($newWidth * $ratio)
             }
+            # ç”»åƒãŒãƒ¨ã‚³é•·ã€ã‹ã¤æ¨ªå¹…ãŒ1200pxã‚ˆã‚Šå¤§ãã„å ´åˆ
             elseif (-not $isPortrait -and $image.Width -gt 1200) {
                 $ratio = $image.Height / $image.Width
                 $newWidth = 1200
                 $newHeight = [math]::Round($newWidth * $ratio)
             }
-            else {
-                Write-Host "k¬•s—v"
-                # k¬‚ª•s—v‚Èê‡AƒXƒLƒbƒv
+            #-------------------------------
+            # ç”»åƒã‚µã‚¤ã‚ºã‚’å¤‰æ›´ã—ã¦ä¸Šæ›¸ãä¿å­˜
+            #-------------------------------
+            $canvas = New-Object System.Drawing.Bitmap($newWidth, $newHeight)
+            if($canvas){
+                $graphics = [System.Drawing.Graphics]::FromImage($canvas)
+                $graphics.DrawImage($image, (New-Object System.Drawing.Rectangle(0, 0, $canvas.Width, $canvas.Height)))
                 $image.Dispose()
-                return
+                # Resizeãƒ‡ãƒ¼ã‚¿ã®ä¿å­˜
+                $canvas.Save($_.FullName, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+
+                $graphics.Dispose()
+                $canvas.Dispose()
+
+            }else{
+                echo "å¤‰æ•° canvas ãŒå­˜åœ¨ã—ã¾ã›ã‚“ã€‚"
             }
-
-            $newImage = New-Object System.Drawing.Bitmap($newWidth, $newHeight)
-
-            # ‚•i¿ƒOƒ‰ƒtƒBƒbƒNƒXƒIƒuƒWƒFƒNƒg‚ğì¬
-            $graphics = [System.Drawing.Graphics]::FromImage($newImage)
-            $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-            $graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-            $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-            $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-
-            $graphics.DrawImage($image, 0, 0, $newWidth, $newHeight)
-            $image.Dispose()
-
-            # ƒŠƒTƒCƒY‰æ‘œ‚ğã‘‚«•Û‘¶
-            $newImage.Save($_.FullName, $image.RawFormat)
-
-            # ƒŠƒ\[ƒX‰ğ•ú
-            $graphics.Dispose()
-            $newImage.Dispose()
         }
+
         finally {
-            if ($image -ne $null) {
-                $image.Dispose()
-            }
+            $image.Dispose()
         }
     }
 }
